@@ -26,20 +26,19 @@ def load_data():
 
     if not os.path.exists(file_path):
         st.error(f"❌ File not found: {file_path}")
-        st.write("📁 Current directory files:", os.listdir())
+        st.write("📁 Files available:", os.listdir())
         st.stop()
 
-    return pd.read_csv(file_path)
+    df = pd.read_csv(file_path)
 
+    # Normalize column names (CRITICAL FIX)
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
 
-
-    # Ensure consistent column names
-    df = df.rename(columns={
-        "female_enrollment": "Female_Enrollment",
-        "male_enrollment": "Male_Enrollment",
-        "country": "Country",
-        "year": "Year"
-    })
     return df
 
 df = load_data()
@@ -47,15 +46,15 @@ df = load_data()
 # ================= FEATURE ENGINEERING =================
 ml_df = df.copy()
 
-ml_df["gender_gap"] = ml_df["Male_Enrollment"] - ml_df["Female_Enrollment"]
+ml_df["gender_gap"] = ml_df["male_enrollment"] - ml_df["female_enrollment"]
 ml_df["egii"] = np.where(
-    ml_df["Male_Enrollment"] > 0,
-    ml_df["gender_gap"] / ml_df["Male_Enrollment"],
+    ml_df["male_enrollment"] > 0,
+    ml_df["gender_gap"] / ml_df["male_enrollment"],
     0
 )
 ml_df["high_risk"] = (ml_df["egii"] > 0.20).astype(int)
 
-features = ["Female_Enrollment", "Male_Enrollment", "gender_gap", "egii"]
+features = ["female_enrollment", "male_enrollment", "gender_gap", "egii"]
 ml_df = ml_df.dropna(subset=features)
 
 X = ml_df[features]
@@ -91,23 +90,27 @@ model, scaler, model_accuracy = train_model(X, y)
 st.sidebar.header("🌍 Country Selection")
 country = st.sidebar.selectbox(
     "Select Country",
-    sorted(df["Country"].dropna().unique())
+    sorted(df["country"].dropna().unique())
 )
 
-filtered = df[df["Country"] == country].sort_values("Year")
+filtered = df[df["country"] == country].sort_values("year")
 if filtered.empty:
+    st.warning("No data available for this country.")
     st.stop()
 
 # ================= COUNTRY METRICS =================
-avg_female = filtered["Female_Enrollment"].mean()
-avg_male = filtered["Male_Enrollment"].mean()
+avg_female = filtered["female_enrollment"].mean()
+avg_male = filtered["male_enrollment"].mean()
 gender_gap = max(avg_male - avg_female, 0)
 egii = gender_gap / avg_male if avg_male > 0 else 0
 
-country_features = pd.DataFrame([[avg_female, avg_male, gender_gap, egii]], columns=features)
+country_features = pd.DataFrame(
+    [[avg_female, avg_male, gender_gap, egii]],
+    columns=features
+)
 scaled_country = scaler.transform(country_features)
 
-prob = model.predict_proba(scaled_country)[0][1] if len(model.classes_) == 2 else model.predict_proba(scaled_country)[0][0]
+prob = model.predict_proba(scaled_country)[0][1]
 
 # ================= HEADER =================
 st.markdown("""
@@ -126,17 +129,17 @@ c4.metric("EGII", f"{egii:.2f}")
 st.subheader("📈 Enrollment Trends")
 
 chart_data = filtered.melt(
-    id_vars="Year",
-    value_vars=["Female_Enrollment", "Male_Enrollment"],
+    id_vars="year",
+    value_vars=["female_enrollment", "male_enrollment"],
     var_name="Gender",
     value_name="Enrollment"
 )
 
 chart = alt.Chart(chart_data).mark_line(point=True).encode(
-    x="Year:O",
+    x="year:O",
     y="Enrollment",
     color="Gender",
-    tooltip=["Year", "Gender", "Enrollment"]
+    tooltip=["year", "Gender", "Enrollment"]
 ).interactive()
 
 st.altair_chart(chart, use_container_width=True)
@@ -158,7 +161,6 @@ gauge = go.Figure(go.Indicator(
         "bar": {"color": "darkred"}
     }
 ))
-
 gauge.update_layout(height=350)
 st.plotly_chart(gauge, use_container_width=True)
 
@@ -167,9 +169,9 @@ st.subheader("🧠 Global AI Explainability")
 
 X_scaled = scaler.transform(X)
 explainer = shap.TreeExplainer(model)
-shap_exp = explainer(X_scaled)
+shap_values = explainer(X_scaled)
 
-shap_vals = shap_exp.values[:, :, 1] if shap_exp.values.ndim == 3 else shap_exp.values
+shap_vals = shap_values.values[:, :, 1]
 
 importance_df = (
     pd.DataFrame(shap_vals, columns=features)
@@ -185,16 +187,15 @@ fig = px.bar(
     x="Importance",
     y="Feature",
     orientation="h",
-    title="Global Feature Importance (SHAP)",
-    color="Importance"
+    title="Global Feature Importance (SHAP)"
 )
 st.plotly_chart(fig, use_container_width=True)
 
 # ================= SHAP LOCAL =================
-st.subheader("🔍 Why this Country? (Local SHAP)")
+st.subheader("🔍 Why this Country?")
 
 local_exp = explainer(scaled_country)
-local_vals = local_exp.values[0, :, 1] if local_exp.values.ndim == 3 else local_exp.values[0]
+local_vals = local_exp.values[0, :, 1]
 
 local_df = pd.DataFrame({
     "Feature": features,
@@ -228,7 +229,3 @@ st.markdown("""
 AI • Data Science • Social Good
 </p>
 """, unsafe_allow_html=True)
-
-
-
-
