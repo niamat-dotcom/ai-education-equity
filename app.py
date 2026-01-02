@@ -21,9 +21,14 @@ st.set_page_config(
 # ================= LOAD DATA =================
 @st.cache_data
 def load_data():
-    #url = "C:\education inequality project\data\education.csv"
-    #df = pd.read_csv(url)
-    df = pd.read_csv("education.csv")
+    file_path = "education.csv"
+    if not os.path.exists(file_path):
+        st.error(f"❌ File not found: {file_path}")
+        st.write("📁 Current directory files:", os.listdir())
+        st.stop()
+
+    return pd.read_csv(file_path)
+
 
 
     # Ensure consistent column names
@@ -221,5 +226,6 @@ st.markdown("""
 AI • Data Science • Social Good
 </p>
 """, unsafe_allow_html=True)
+
 
 
