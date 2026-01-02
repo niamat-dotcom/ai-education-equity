@@ -21,8 +21,10 @@ st.set_page_config(
 # ================= LOAD DATA =================
 @st.cache_data
 def load_data():
-    url = "C:\education inequality project\data\education.csv"
-    df = pd.read_csv(url)
+    #url = "C:\education inequality project\data\education.csv"
+    #df = pd.read_csv(url)
+    df = pd.read_csv("education.csv")
+
 
     # Ensure consistent column names
     df = df.rename(columns={
@@ -219,4 +221,5 @@ st.markdown("""
 AI • Data Science • Social Good
 </p>
 """, unsafe_allow_html=True)
+
 
