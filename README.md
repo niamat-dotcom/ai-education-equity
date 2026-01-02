@@ -17,6 +17,8 @@ across countries using real-world enrollment data.
 - Scikit-learn
 - SHAP
 - Plotly & Altair
+Live Demo: https://ai-education-equity-wbe.streamlit.app
+
 
 ## Social Impact
 This project demonstrates how AI can be applied responsibly
