@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 import numpy as np
 import altair as alt
 import shap
@@ -22,6 +23,7 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     file_path = "education.csv"
+
     if not os.path.exists(file_path):
         st.error(f"❌ File not found: {file_path}")
         st.write("📁 Current directory files:", os.listdir())
@@ -226,6 +228,7 @@ st.markdown("""
 AI • Data Science • Social Good
 </p>
 """, unsafe_allow_html=True)
+
 
 
 
